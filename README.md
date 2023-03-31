@@ -1,7 +1,7 @@
 <h1 align="center">Hi 👋, I'm Mustafa Omar</h1>
 <h3 align="center">A passionate frontend developer in love with programming and tech in general</h3>
 
-<p align="left"> <a href="https://github.com/ryo-ma/github-profile-trophy"><img src="https://github-profile-trophy.vercel.app/?username=mustafa98m" alt="mustafa98m" /></a> </p>
+<img align="right" alt="Coding" width="400" src="https://media.tenor.com/GfSX-u7VGM4AAAAC/coding.gif"/>
 
 - 📫 How to reach me **mustafaomardev@gmail.com**
 
