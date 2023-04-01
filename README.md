@@ -1,7 +1,5 @@
 <img alt="Web developer" width="100%" src="https://semidotinfotech.com/web/images/frontend_banner.jpg"/>
-</br>
-</br>
-<h1 align="center"Well hello there 👋, I'm Mustafa Omar</h1>
+<h1 align="center"> Well hello there 👋, I'm Mustafa Omar</h1>
 <h3 align="center">A passionate frontend developer in love with programming and tech in general I'm currently working at <a href="https://qaflab.com/">Qaflab</a> as a frontend engineer and website officer</h3>
 
 <img align="right" alt="Coding" width="400" src="https://media.tenor.com/GfSX-u7VGM4AAAAC/coding.gif"/>
