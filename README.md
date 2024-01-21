@@ -2,8 +2,8 @@
 <h1 align="center"> Well hello there 👋, I'm Mustafa Omar</h1>
 <h3 align="center">A passionate software engineer in love with programming and tech in general, I'm currently working at <a href="https://qaflab.com/">Qaflab</a> as a frontend engineer and website officer</h3>
 
-<img align="right" alt="Coding" width="400" src="https://media.tenor.com/GfSX-u7VGM4AAAAC/coding.gif"/>
-<a align="center" href="https://app.daily.dev/mustafaomar00"><img src="https://api.daily.dev/devcards/eccc2fa34d6740b78382d2d3da08b045.png?r=ybf" width="400" alt="Mustafa Omar's Dev Card"/></a>
+<a align="center" href="https://app.daily.dev/mustafaomar00"><img src="https://api.daily.dev/devcards/eccc2fa34d6740b78382d2d3da08b045.png?r=ybf" width="200" alt="Mustafa Omar's Dev Card"/></a>
+
 <h3 align="left">Connect with me:</h3>
 <p align="left">
 <a href="https://linkedin.com/in/mofakhri" target="blank"><img align="center" src="https://raw.githubusercontent.com/rahuldkjain/github-profile-readme-generator/master/src/images/icons/Social/linked-in-alt.svg" alt="mofakhri" height="30" width="40" /></a>
