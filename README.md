@@ -7,11 +7,11 @@
   <a href="https://the-thing.dev"><img src="art/btn-the-thing.svg" width="32%" alt="Play: the-thing.dev"></a>
 </p>
 
-<img src="art/01-now.svg" width="100%" alt="01 · Now playing. Systems at work. The Thing after hours.">
+<a href="https://mustafa-omar.com"><img src="art/01-now.svg" width="100%" alt="01 · Now playing. Systems at work. The Thing after hours."></a>
 
-<img src="art/now.svg" width="100%" alt="By day: I'm a solutions architect and DevOps engineer. I build AI-powered solutions, agentic workflows, and the production infrastructure under them. After hours: I make The Thing, my playground for films, games and buttons you probably shouldn't press. Super Mo lives there. He has opinions.">
+<a href="https://mustafa-omar.com"><img src="art/now.svg" width="100%" alt="By day: I'm a solutions architect and DevOps engineer. I build AI-powered solutions, agentic workflows, and the production infrastructure under them. After hours: I make The Thing, my playground for films, games and buttons you probably shouldn't press. Super Mo lives there. He has opinions."></a>
 
-<img src="art/02-cartridges.svg" width="100%" alt="02 · Cartridges. Things I made. Plug one in.">
+<a href="https://the-thing.dev"><img src="art/02-cartridges.svg" width="100%" alt="02 · Cartridges. Things I made. Plug one in."></a>
 
 <p align="center">
   <a href="https://mustafa-omar.com"><img src="art/cart-portfolio.svg" width="32%" alt="Portfolio, mustafa-omar.com: my work, AI solutions, agentic workflows and production infrastructure. Live."></a>
@@ -20,14 +20,14 @@
 </p>
 <p align="center">
   <a href="https://the-thing.dev/#display-block"><img src="art/cart-display-block.svg" width="32%" alt="Display: Block: falling blocks made of real HTML tags. Shipped."></a>
-  <img src="art/cart-the-thing-hq.svg" width="32%" alt="The Thing: HQ: your coding agents as pixel buddies in a command center. Coming soon.">
+  <a href="https://the-thing.dev"><img src="art/cart-the-thing-hq.svg" width="32%" alt="The Thing: HQ: your coding agents as pixel buddies in a command center. Coming soon."></a>
 </p>
 
-<img src="art/03-inventory.svg" width="100%" alt="03 · Inventory. The tools I reach for, slot by slot.">
+<a href="https://mustafa-omar.com"><img src="art/03-inventory.svg" width="100%" alt="03 · Inventory. The tools I reach for, slot by slot."></a>
 
-<img src="art/inventory.svg" width="100%" alt="Web: React, Next.js, TypeScript, JavaScript, Three.js, WordPress. Ops: Docker, Linux, Git, GitHub Actions, Cloudflare, Nginx. Make: Figma, Remotion, Blender, Postman, Claude Code, Herdr.">
+<a href="https://mustafa-omar.com"><img src="art/inventory.svg" width="100%" alt="Web: React, Next.js, TypeScript, JavaScript, Three.js, WordPress. Ops: Docker, Linux, Git, GitHub Actions, Cloudflare, Nginx. Make: Figma, Remotion, Blender, Postman, Claude Code, Herdr."></a>
 
-<img src="art/04-link-cable.svg" width="100%" alt="04 · Link cable. Say hi. I read everything.">
+<a href="https://mustafa-omar.com"><img src="art/04-link-cable.svg" width="100%" alt="04 · Link cable. Say hi. I read everything."></a>
 
 <p align="center">
   <a href="https://mustafa-omar.com"><img src="art/btn-portfolio.svg" width="32%" alt="Portfolio: mustafa-omar.com"></a>
