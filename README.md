@@ -1,46 +1,63 @@
-# 👋 Hi there, I'm Mustafa Omar
+<p align="center">
+  <a href="https://the-thing.dev"><img src="art/hero.svg" width="100%" alt="Mustafa Omar. Frontend and DevOps engineer. I build web things for work, and strange little things for fun."></a>
+</p>
 
-**Frontend & DevOps Engineer** | Building scalable web solutions and robust infrastructure
+<p align="center">
+  <a href="https://the-thing.dev"><img src="https://img.shields.io/badge/PLAY-THE--THING.DEV-ff4d17?style=flat-square&labelColor=0b0b0c" alt="Play: the-thing.dev"></a>
+  <a href="https://mustafa-omar.com"><img src="https://img.shields.io/badge/SITE-MUSTAFA--OMAR.COM-efebe3?style=flat-square&labelColor=0b0b0c" alt="Site: mustafa-omar.com"></a>
+  <img src="https://img.shields.io/badge/ROLE-FRONTEND%20%2B%20DEVOPS-8e8a83?style=flat-square&labelColor=0b0b0c" alt="Role: Frontend and DevOps">
+</p>
 
-Currently working at [Qaflab](https://qaflab.com/) where I bridge the gap between development and operations, handling everything from React applications to CI/CD pipelines and server management.
+<br>
 
----
+<img src="art/01-now.svg" width="100%" alt="01 · Now playing. Web apps at work. The Thing after hours.">
 
-## 🚀 What I Do
+By day I build web apps and keep the servers, pipelines and deploys behind them running.
 
-- **Frontend Development**: Crafting responsive, performant web applications with React, Next.js, and WordPress
-- **DevOps Engineering**: Managing server infrastructure, CI/CD pipelines, and deployment automation
-- **Full-Stack Solutions**: End-to-end development from UI/UX to production deployment
+After hours I make **[The Thing](https://the-thing.dev)**, my playground for films, games and
+buttons you probably shouldn't press. A pixel guy called Super Mo lives there. He runs, he
+jumps bugs, and he has opinions.
 
-## 🛠️ Tech Stack
+<br>
 
-### Frontend
-![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
-![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=next.js&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
-![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
-![WordPress](https://img.shields.io/badge/WordPress-21759B?style=for-the-badge&logo=wordpress&logoColor=white)
+<img src="art/02-cartridges.svg" width="100%" alt="02 · Cartridges. Things I made. Plug one in.">
 
-### DevOps & Infrastructure
-![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
-![Linux](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)
-![Git](https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white)
-![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?style=for-the-badge&logo=github-actions&logoColor=white)
+<p align="center">
+  <a href="https://the-thing.dev"><img src="art/cart-the-thing.svg" width="24%" alt="The Thing: my playground on the web. Live."></a>
+  <a href="https://the-thing.dev/#bug-run"><img src="art/cart-bug-run.svg" width="24%" alt="Bug Run: a Super Mo runner game. Shipped."></a>
+  <a href="https://the-thing.dev/#display-block"><img src="art/cart-display-block.svg" width="24%" alt="Display: Block, a falling-block game made of HTML tags. Shipped."></a>
+  <img src="art/cart-the-thing-hq.svg" width="24%" alt="The Thing: HQ, a Herdr mod for coding agents. Coming soon.">
+</p>
 
-### Design & Tools
-![Figma](https://img.shields.io/badge/Figma-F24E1E?style=for-the-badge&logo=figma&logoColor=white)
-![Postman](https://img.shields.io/badge/Postman-FF6C37?style=for-the-badge&logo=postman&logoColor=white)
+| | Cartridge | What it is |
+|---|---|---|
+| `01` | **[The Thing](https://the-thing.dev)** | My playground. Films, games, a useless machine and a Chaos Mode that breaks the page. |
+| `02` | **[Bug Run](https://the-thing.dev/#bug-run)** | Super Mo's endless runner. Jump the bugs, stomp the Bug King. |
+| `03` | **[Display: Block](https://the-thing.dev/#display-block)** | Falling blocks made of real HTML tags. Clear a line with `clear: both;`. |
+| `04` | **The Thing: HQ** | Your coding agents as pixel buddies in a command center. Private for now. |
 
-## 📫 Let's Connect
+<br>
 
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://linkedin.com/in/mofakhri)
-[![Email](https://img.shields.io/badge/Email-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:mustafaomardev@gmail.com)
-[![Instagram](https://img.shields.io/badge/Instagram-E4405F?style=for-the-badge&logo=instagram&logoColor=white)](https://instagram.com/mo_fakhri98)
+<img src="art/03-inventory.svg" width="100%" alt="03 · Inventory. The tools I reach for, slot by slot.">
 
----
+<img src="art/inventory.svg" width="100%" alt="Web: React, Next.js, TypeScript, JavaScript, Three.js, WordPress. Ops: Docker, Linux, Git, GitHub Actions, Cloudflare, Nginx. Make: Figma, Remotion, Blender, Postman, Claude Code, Herdr.">
 
-<div align="center">
-  <img src="https://komarev.com/ghpvc/?username=Mustafa98m&color=blueviolet" alt="Profile Views" />
-  
-  *"Code is like humor. When you have to explain it, it's bad." – Cory House*
-</div>
+<br>
+
+<img src="art/04-link-cable.svg" width="100%" alt="04 · Link cable. Say hi. I read everything.">
+
+<p align="center">
+  <a href="https://linkedin.com/in/mofakhri"><img src="https://img.shields.io/badge/LINKEDIN-MOFAKHRI-efebe3?style=for-the-badge&labelColor=0b0b0c" alt="LinkedIn"></a>
+  <a href="mailto:mustafaomardev@gmail.com"><img src="https://img.shields.io/badge/EMAIL-SAY%20HI-ff4d17?style=for-the-badge&labelColor=0b0b0c" alt="Email"></a>
+  <a href="https://instagram.com/mo_fakhri98"><img src="https://img.shields.io/badge/INSTAGRAM-MO__FAKHRI98-efebe3?style=for-the-badge&labelColor=0b0b0c" alt="Instagram"></a>
+</p>
+
+<br>
+
+<p align="center">
+  <img src="art/footer.svg" width="100%" alt="Game saved. Thanks for stopping by. Come back when there's more.">
+</p>
+
+<p align="center">
+  <img src="https://komarev.com/ghpvc/?username=Mustafa98m&label=VISITORS&color=ff4d17&style=flat-square&labelColor=0b0b0c" alt="Visitors">
+</p>
