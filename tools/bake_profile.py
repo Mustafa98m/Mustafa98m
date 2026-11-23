@@ -162,7 +162,7 @@ def hero():
 
     # eyebrow
     b.append(f'<rect x="{M}" y="{M + 6}" width="16" height="16" fill="{SIGNAL}"/>')
-    e, _ = text("PLAYER 1 · FRONTEND + DEVOPS ENGINEER", "mono", 20, M + 30, M + 22, BONE, .04)
+    e, _ = text("PLAYER 1 · SOLUTIONS ARCHITECT + DEVOPS", "mono", 20, M + 30, M + 22, BONE, .04)
     b.append(e)
 
     # the hook, typed on a CRT: each letter steps in, the caret settles and blinks
@@ -184,7 +184,7 @@ def hero():
                "@keyframes blink{50%{opacity:0}}")
 
     # the voice
-    v1, _ = text("I build web things for work,", "pixel", 32, M, M + 378, BONE)
+    v1, _ = text("I build real systems for work,", "pixel", 32, M, M + 378, BONE)
     v2, _ = text("and strange little things for fun.", "pixel", 32, M, M + 420, ASH)
     b += [v1, v2]
 
@@ -224,13 +224,13 @@ def hero():
 
     b.append(finish(W, H))
     return svg(W, H, "".join(b),
-               "Mustafa Omar. Frontend and DevOps engineer. I build web things for work, and strange little things for fun. Super Mo hops a bug.",
+               "Mustafa Omar. Solutions architect and DevOps engineer. I build real systems for work, and strange little things for fun. Super Mo hops a bug.",
                "".join(css))
 
 
 # ------------------------------------------------------------------ section headers
 SECTIONS = [
-    ("01", "now", "NOW PLAYING", "Web apps at work.", "The Thing after hours.", "hardHat-0", "On it."),
+    ("01", "now", "NOW PLAYING", "Systems at work.", "The Thing after hours.", "hardHat-0", "On it."),
     ("02", "cartridges", "CARTRIDGES", "Things I made.", "Plug one in.", "point-0", "Pick one."),
     ("03", "inventory", "INVENTORY", "The tools I reach for,", "slot by slot.", "giggle-0", "Ctrl+S."),
     ("04", "link-cable", "LINK CABLE", "Say hi.", "I read everything.", "wave-1", "You rang?"),
@@ -263,16 +263,16 @@ def header(n, label, v1, v2, pose, quip, seed):
 
 
 # ------------------------------------------------------------------ cartridges
-def cartridge(title, sub, art, stamp, stamp_on):
-    """A handheld cartridge: Ink-2 shell with grip ridges, a Bone label with the game's art."""
-    W, H = 300, 360
+def cartridge(title, sub, art, stamp, stamp_on, desc=()):
+    """A handheld cartridge: Ink-2 shell with grip ridges, a Bone label with the game's art and its blurb."""
+    W, H = 300, 420
     b = [f'<rect width="{W}" height="{H}" fill="{INK}"/>']
     # shell: square, with the notched top-right corner
-    b.append(f'<path fill="{INK2}" stroke="{ASH_D}" stroke-width="2" d="M14 14H262L286 38V346H14Z"/>')
+    b.append(f'<path fill="{INK2}" stroke="{ASH_D}" stroke-width="2" d="M14 14H262L286 38V406H14Z"/>')
     for k in range(5):
         b.append(rule(40 + k * 14, 26, 8, ASH_D, 14))
     # label
-    lx, ly, lw, lh = 34, 58, 232, 236
+    lx, ly, lw, lh = 34, 58, 232, 296
     b.append(f'<rect x="{lx}" y="{ly}" width="{lw}" height="{lh}" fill="{BONE}"/>')
     b.append(f'<rect x="{lx + 10}" y="{ly + 10}" width="{lw - 20}" height="140" fill="{INK}"/>')
     b.append(f'<g transform="translate({lx + 10} {ly + 10})">{art}</g>')
@@ -282,6 +282,12 @@ def cartridge(title, sub, art, stamp, stamp_on):
     t, _ = text(title, "arcade", ts, lx + 12, ly + 186, INK)
     s, _ = text(sub, "mono", 11, lx + 12, ly + 214, ASH_D, .04)
     b += [t, s]
+    for k, line in enumerate(desc):
+        fs = 15
+        while width(line, "pixel", fs) > lw - 24:
+            fs -= .5
+        dl, _ = text(line, "pixel", fs, lx + 12, ly + 244 + k * 20, INK)
+        b.append(dl)
     # stamp, tilted like Bug Cave's SQUASHED
     sw = width(stamp, "monob", 14, .06) + 20
     st, _ = text(stamp, "monob", 14, 10, 21, INK if stamp_on else BONE, .06)
@@ -289,8 +295,8 @@ def cartridge(title, sub, art, stamp, stamp_on):
     b.append(f'<g transform="translate({lx + lw - sw + 8} {ly - 14}) rotate(-6)"><rect width="{sw}" height="30" fill="{fill}"/>{st}</g>')
     # contacts
     for k in range(9):
-        b.append(rule(64 + k * 20, 318, 10, ASH_D, 16))
-    return svg(W, H, "".join(b), f"Cartridge: {title}. {sub.title()}. {stamp.title()}.")
+        b.append(rule(64 + k * 20, 378, 10, ASH_D, 16))
+    return svg(W, H, "".join(b), f"Cartridge: {title}. {sub.title()}. {' '.join(desc)} {stamp.title()}.")
 
 
 def art_thing():
@@ -342,11 +348,29 @@ def art_hq():
     return floor + screens + glow(56, 74, 46) + mo("hardHat-0", 22, 18, 3)
 
 
+def art_portfolio():
+    """A little browser window holding the wordmark."""
+    bar = (f'<rect x="0" y="0" width="212" height="18" fill="{INK2}"/>'
+           + "".join(f'<rect x="{8 + i * 10}" y="7" width="5" height="5" fill="{c}"/>' for i, c in enumerate((SIGNAL, ASH, ASH_D)))
+           + text("MUSTAFA-OMAR.COM", "mono", 8, 46, 13, ASH, .04)[0])
+    wm, ww = wordmark(0, 0, 30)
+    wm, _ = wordmark((212 - ww) / 2, 78, 30)
+    s1, w1 = text("ARCHITECT · DEVOPS", "mono", 9, 0, 0, ASH, .04)
+    s1, _ = text("ARCHITECT · DEVOPS", "mono", 9, (212 - w1) / 2, 104, ASH, .04)
+    return bar + wm + s1
+
+
 CARTS = [
-    ("the-thing", "THE THING", "MY PLAYGROUND · WEB", art_thing, "LIVE", True),
-    ("bug-run", "BUG RUN", "SUPER MO · GAME", art_bugrun, "SHIPPED", True),
-    ("display-block", "DISPLAY: BLOCK", "HTML TAGS · GAME", art_block, "SHIPPED", True),
-    ("the-thing-hq", "THE THING: HQ", "AGENTS · HERDR MOD", art_hq, "SOON", False),
+    ("portfolio", "PORTFOLIO", "MUSTAFA-OMAR.COM · WORK", art_portfolio, "LIVE", True,
+     ("My work: AI solutions, agentic", "workflows and production infra.")),
+    ("the-thing", "THE THING", "THE-THING.DEV · PLAYGROUND", art_thing, "LIVE", True,
+     ("Films, games, a useless machine,", "and a Chaos Mode that breaks it.")),
+    ("bug-run", "BUG RUN", "SUPER MO · GAME", art_bugrun, "SHIPPED", True,
+     ("Super Mo's endless runner. Jump", "the bugs, stomp the Bug King.")),
+    ("display-block", "DISPLAY: BLOCK", "HTML TAGS · GAME", art_block, "SHIPPED", True,
+     ("Falling blocks made of real HTML", "tags. Clear lines with clear: both;")),
+    ("the-thing-hq", "THE THING: HQ", "AGENTS · HERDR MOD", art_hq, "SOON", False,
+     ("Your coding agents as pixel", "buddies in a command center.")),
 ]
 
 
@@ -391,6 +415,80 @@ def inventory():
     return svg(W, H, "".join(b), label)
 
 
+# ------------------------------------------------------------------ the "now" dialog box
+NOW = [
+    ("BY DAY", [("I'm a solutions architect and DevOps engineer.", BONE),
+                ("I build AI-powered solutions, agentic workflows,", ASH),
+                ("and the production infrastructure under them.", ASH)]),
+    ("AFTER HOURS", [("I make The Thing, my playground for films, games", BONE),
+                     ("and buttons you probably shouldn't press.", ASH),
+                     ("Super Mo lives there. He has opinions.", ASH)]),
+]
+
+
+def dialog():
+    """An RPG text box: Mo's portrait in a frame, two speeches, a Signal arrow to read on."""
+    W, M = 1280, 64
+    H = 430
+    b = [ground(W, H, 41, 0)]
+    b.append(f'<rect x="{M - 6}" y="26" width="{W - 2 * M + 12}" height="{H - 52}" fill="{INK}" stroke="{ASH_D}" stroke-width="2"/>')
+    b.append(f'<rect x="{M}" y="32" width="{W - 2 * M}" height="{H - 64}" fill="{INK2}" stroke="{BONE}" stroke-width="4"/>')
+    # portrait
+    px, py = M + 28, 70
+    b.append(f'<rect x="{px}" y="{py}" width="148" height="180" fill="{INK}" stroke="{ASH_D}" stroke-width="2"/>')
+    b.append(glow(px + 74, py + 96, 70))
+    b.append(mo("nod-0", px + 14, py + 12, 5))
+    n, nw = text("MO", "monob", 14, 0, 0, INK, .06)
+    b.append(f'<rect x="{px}" y="{py + 180}" width="148" height="0" fill="none"/>')
+    tag, _ = text("MO", "monob", 14, px + 10, py - 8, SIGNAL, .06)
+    b.append(tag)
+    # speeches
+    x = px + 148 + 48
+    colw = W - M - 40 - x
+    for c, (head, lines) in enumerate(NOW):
+        y = 82 + c * 170
+        h, _ = text(head, "monob", 14, x, y, SIGNAL, .06)
+        b.append(h)
+        b.append(rule(x, y + 10, colw))
+        for k, (line, col) in enumerate(lines):
+            t, _ = text(line, "pixel", 24, x, y + 50 + k * 34, col)
+            b.append(t)
+    b.append(f'<path class="more" fill="{SIGNAL}" d="M{W - M - 36} {H - 58}h16v4h-4v4h-4v4h-4v-4h-4v-4h-4z"/>')
+    b.append(finish(W, H))
+    label = " ".join(l for _, ls in NOW for l, _ in ls)
+    return svg(W, H, "".join(b), label,
+               ".more{animation:more 1s steps(2) infinite}@keyframes more{50%{transform:translateY(4px)}}")
+
+
+# ------------------------------------------------------------------ link buttons
+BUTTONS = [
+    ("portfolio", "PORTFOLIO", "MUSTAFA-OMAR.COM", True),
+    ("the-thing", "PLAY", "THE-THING.DEV", True),
+    ("linkedin", "LINKEDIN", "MOFAKHRI", False),
+    ("email", "EMAIL", "SAY HI", False),
+    ("instagram", "INSTAGRAM", "MO_FAKHRI98", False),
+]
+
+
+def button(label, value, primary):
+    """A square console button: a Silkscreen label over the value, Signal when it's the main way in."""
+    W, H = 300, 88
+    face = SIGNAL if primary else INK2
+    fg = INK if primary else BONE
+    sub = INK if primary else ASH
+    b = [f'<rect width="{W}" height="{H}" fill="{INK}"/>',
+         f'<rect x="4" y="8" width="{W - 8}" height="{H - 12}" fill="{ASH_D if not primary else "#b8360f"}"/>',
+         f'<rect x="4" y="4" width="{W - 8}" height="{H - 16}" fill="{face}" stroke="{BONE if not primary else face}" stroke-width="2"/>']
+    l, _ = text(label, "monob", 12, 22, 28, sub, .08)
+    fs = 22
+    while width(value, "mono", fs, .04) > W - 70:
+        fs -= 1
+    v, _ = text(value, "mono", fs, 22, 60, fg, .04)
+    arrow = f'<path fill="{fg}" d="M{W - 40} 30h4v4h4v4h4v4h-4v4h-4v4h-4z"/>'
+    b += [l, v, arrow]
+    return svg(W, H, "".join(b), f"{label.title()}: {value.lower()}")
+
+
 # ------------------------------------------------------------------ footer
 def footer():
     W, H = 1280, 260
@@ -420,8 +518,11 @@ if __name__ == "__main__":
     (OUT / "hero.svg").write_text(hero())
     for i, (n, slug, label, v1, v2, pose, quip) in enumerate(SECTIONS):
         (OUT / f"{n}-{slug}.svg").write_text(header(n, label, v1, v2, pose, quip, 10 + i))
-    for slug, title, sub, art, stamp, on in CARTS:
-        (OUT / f"cart-{slug}.svg").write_text(cartridge(title, sub, art(), stamp, on))
+    for slug, title, sub, art, stamp, on, desc in CARTS:
+        (OUT / f"cart-{slug}.svg").write_text(cartridge(title, sub, art(), stamp, on, desc))
+    (OUT / "now.svg").write_text(dialog())
+    for slug, lab, val, primary in BUTTONS:
+        (OUT / f"btn-{slug}.svg").write_text(button(lab, val, primary))
     (OUT / "inventory.svg").write_text(inventory())
     (OUT / "footer.svg").write_text(footer())
     print("art:", sorted(p.name for p in OUT.glob("*.svg")))
