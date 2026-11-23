@@ -22,6 +22,7 @@ The scoreboard (heatmap + stats) is live data, rebuilt daily by .github/workflow
 If GitHub can't be reached, the last numbers in tools/stats-cache.json are used.
 """
 import datetime as dt
+import html
 import json
 import os
 import re
@@ -48,6 +49,7 @@ FONTS = {
     "monob": TOOLS / "fonts/Silkscreen-Bold.ttf",
     "pixel": TOOLS / "fonts/PixelifySans-Variable.ttf",
     "anton": TOOLS / "fonts/Anton-Regular.ttf",
+    "vt": TOOLS / "fonts/VT323-Regular.ttf",
 }
 
 # the grid
@@ -157,6 +159,7 @@ def wordmark(x, y, size, fill=BONE):
 
 
 def svg(w, h, body, label_, style=""):
+    label_ = html.escape(label_, quote=True)
     st = f"<style>{style}@media (prefers-reduced-motion: reduce){{*{{animation:none!important}}}}</style>" if style else ""
     return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{round(w)}" height="{h}" viewBox="0 0 {w:g} {h}" '
             f'role="img" aria-label="{label_}"><title>{label_}</title>{st}'
@@ -247,14 +250,23 @@ SECTIONS = [
     ("02", "things-i-made", "CARTRIDGES", "THINGS I MADE.", "peekPoint-0", "THE-THING.DEV"),
     ("03", "scoreboard", "LIVE FROM GITHUB", "THE SCOREBOARD.", "peekUpHappy-0", "UPDATED DAILY"),
     ("04", "the-tools", "INVENTORY", "THE TOOLS.", "peekUp-0", "18 SLOTS"),
-    ("05", "say-hi", "LINK CABLE", "SAY HI.", "peekWave-0", "I READ EVERYTHING"),
+    ("05", "hello-world", "EVERY PROGRAMMER'S FIRST LINE", 'console.log("Hello World")', "peekUpHappy-0", "96 LANGUAGES"),
+    ("06", "say-hi", "LINK CABLE", "SAY HI.", "peekWave-0", "I READ EVERYTHING"),
 ]
 
 
 def header(n, eyebrow, hook, pose, aside):
     H = 210
     b = [arrow_down(M, 48, SIGNAL), label(f"{n} · {eyebrow}", M + 26, 64, ASH, 14)]
-    b.append(text(hook, "arcade", 92, M - 2, 152, BONE)[0])
+    m = re.match(r'(.*?)(".*")(.*)$', hook)
+    if m:  # a line of code keeps its own case, its string in Signal, like the site's heading
+        x = M - 2
+        for part, col in zip(m.groups(), (BONE, SIGNAL, BONE)):
+            t, w = text(part, "arcade", 92, x, 152, col)
+            b.append(t)
+            x += w
+    else:
+        b.append(text(hook, "arcade", 92, M - 2, 152, BONE)[0])
     ry = 176
     u = 4
     mx = W - M - 24 * u
@@ -616,6 +628,49 @@ def button(i, lab, value, primary):
     return cell_svg(i, H, "".join(s), f"{lab.title()}: {value.lower()}")
 
 
+# ------------------------------------------------------------------ 05: hello world (the panel behind the recorded globe)
+HELLO_H = 760
+GLOBE = (W - M - 32 - 560, PAD + 56, 560)      # x, y, size: where tools/hello_gif.sh lays each globe frame
+
+
+def hello_panel():
+    """The site's console window, as a still: the GIF puts the real globe, recorded from the site, on its screen."""
+    ch = HELLO_H - 2 * PAD
+    b = [card(M, PAD, W - 2 * M, ch)]
+    # the bar
+    for k, c in enumerate((SIGNAL, ASH_D, ASH_D)):
+        b.append(rect(M + 24 + k * 16, PAD + 24, 10, 10, c))
+    b.append(text("hello.js", "vt", 26, M + 82, PAD + 36, ASH)[0])
+    b.append(rule(M + 2, PAD + 56, W - 2 * M - 4))
+    # the console, run once
+    x, y, lh, fs = M + 32, PAD + 120, 46, 40
+    gt = text("> ", "vt", fs, x, y, SIGNAL)
+    b.append(gt[0])
+    cx = x + gt[1]
+    for part, col in (("console", BONE), (".", ASH), ("log", BONE), ("(", ASH), ('"Hello World"', SIGNAL), (")", ASH)):
+        t, w = text(part, "vt", fs, cx, y, col)
+        b.append(t)
+        cx += w
+    b.append(text("Hello World", "vt", fs, x + gt[1], y + lh, BONE)[0])
+    b.append(text("< ", "vt", fs, x, y + 2 * lh, ASH)[0])
+    b.append(text("undefined", "vt", fs, x + gt[1], y + 2 * lh, ASH)[0])
+    b.append(text("> ", "vt", fs, x, y + 3 * lh, SIGNAL)[0])
+    b.append(rect(x + gt[1], y + 3 * lh - 30, 16, 34, SIGNAL))
+    # the voice
+    b.append(text("The first thing I ever made a", "pixel", 26, x, y + 5 * lh + 10, BONE)[0])
+    b.append(text("computer say. Run it, and the world", "pixel", 26, x, y + 5 * lh + 48, BONE)[0])
+    b.append(text("says it back in 96 languages.", "pixel", 26, x, y + 5 * lh + 86, ASH)[0])
+    # the screen the globe turns on
+    gx, gy, gs = GLOBE
+    b.append(rect(gx - 16, gy - 16, gs + 32, gs + 32, INK, ASH_D, 2))
+    # status bar
+    sy = PAD + ch - 50
+    b.append(rule(M + 2, sy, W - 2 * M - 4))
+    b.append(label("RECORDED FROM THE-THING.DEV · ONE TURN, FOUR TIMES FASTER", M + 32, sy + 31, ASH, 12))
+    b.append(label("96 LANGUAGES", W - M - 32, sy + 31, BONE, 12, "end"))
+    return svg(W, HELLO_H, "".join(b), 'console.log("Hello World"). The first thing I ever made a computer say. Run it, and the world says it back in 96 languages.')
+
+
 # ------------------------------------------------------------------ footer
 def footer():
     H = 290
@@ -652,4 +707,7 @@ if __name__ == "__main__":
     for i, (slug, lab, val, primary) in enumerate(BUTTONS):
         (OUT / f"btn-{i + 1}-{slug}.svg").write_text(button(i % 3, lab, val, primary))
     (OUT / "footer.svg").write_text(footer())
+    (TOOLS / "build").mkdir(exist_ok=True)
+    (TOOLS / "build/hello-panel.svg").write_text(hello_panel())
+    (TOOLS / "build/globe.json").write_text(json.dumps({"x": GLOBE[0], "y": GLOBE[1], "size": GLOBE[2], "w": W, "h": HELLO_H}))
     print("art:", len(list(OUT.glob("*.svg"))), "files")

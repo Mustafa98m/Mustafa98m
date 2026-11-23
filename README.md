@@ -20,7 +20,11 @@
 
 <a href="https://mustafa-omar.com"><img src="art/inventory.svg" width="100%" alt="Web: React, Next.js, TypeScript, JavaScript, Three.js, WordPress. Ops: Docker, Linux, Git, GitHub Actions, Cloudflare, Nginx. Make: Figma, Remotion, Blender, Postman, Claude Code, Herdr."></a>
 
-<a href="https://mustafa-omar.com"><img src="art/h05-say-hi.svg" width="100%" alt="05 · Link cable. Say hi."></a>
+<a href="https://the-thing.dev/#hello-world"><img src="art/h05-hello-world.svg" width="100%" alt="05 · Every programmer's first line. console.log(&quot;Hello World&quot;)"></a>
+
+<a href="https://the-thing.dev/#hello-world"><img src="art/hello-world.webp" width="100%" alt="A console runs console.log(&quot;Hello World&quot;), and a globe written in Hello World in 96 languages turns beside it. Recorded from the-thing.dev."></a>
+
+<a href="https://mustafa-omar.com"><img src="art/h06-say-hi.svg" width="100%" alt="06 · Link cable. Say hi."></a>
 
 <p><a href="https://mustafa-omar.com"><img src="art/btn-1-portfolio.svg" width="33.33%" alt="Portfolio: mustafa-omar.com"></a><a href="https://the-thing.dev"><img src="art/btn-2-the-thing.svg" width="33.33%" alt="Play: the-thing.dev"></a><a href="https://linkedin.com/in/mofakhri"><img src="art/btn-3-linkedin.svg" width="33.33%" alt="LinkedIn: mofakhri"></a></p>
 
