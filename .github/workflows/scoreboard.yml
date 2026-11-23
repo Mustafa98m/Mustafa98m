@@ -1,0 +1,30 @@
+# Rebuilds the profile art every day so the scoreboard (heatmap + stats) stays live.
+name: Scoreboard
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["tools/**", ".github/workflows/scoreboard.yml"]
+permissions:
+  contents: write
+concurrency: scoreboard
+jobs:
+  bake:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install fonttools==4.55.3
+      - run: python tools/bake_profile.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Commit the new art
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add art tools/stats-cache.json
+          git diff --cached --quiet || { git commit -m "Scoreboard: $(date -u +%F)"; git push; }

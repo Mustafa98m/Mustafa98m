@@ -1,21 +1,32 @@
 """The profile README's art, in the Supermo design system (The Thing's Arcade edition).
 
-GitHub's Markdown can't load fonts or CSS, so the look lives in SVGs: Ink ground, Bone type,
-Signal for the things that matter. Type is set in the brand's own faces (Jersey 10 hooks and
-numbers, Silkscreen labels, Pixelify Sans voice, Anton for the MO — FAKHRII wordmark), turned into
-outlines so every viewer sees them without the fonts. Super Mo is the real cast art from
-The Thing: HQ, drawn at whole pixels per art pixel; the bug is Bug Run's crawler.
+GitHub's Markdown can't load fonts or CSS, so the look lives in SVGs. Type is set in the brand's own
+faces (Jersey 10 hooks and numbers, Silkscreen labels, Pixelify Sans voice, Anton for the
+MO—FAKHRII wordmark), turned into outlines so every viewer sees them without the fonts. Super Mo is
+the real cast art from The Thing: HQ; the bug is Bug Run's crawler.
 
-Motion is CSS inside the SVG (GitHub plays it in <img>), stepped like the site, and stops for
-anyone with reduced motion. Every letter is visible in its base style, so a frozen frame is whole.
+ONE GRID. Every block is 1280 wide: a full panel, or a row of three cells (1280/3 each) laid side by
+side with no gap, so a row reads as one band. Content sits inside the same 64 px margins everywhere,
+and a row's three cards land on the same three columns (COLS) as the stats tiles below them.
+ONE SURFACE. Flat Ink, cards in Ink-2 with a 2 px Ash-dark rule, Signal only for what matters.
+No glow, haze, dust or vignette (The Thing: "no glass, glow, soft shadows").
+ONE HEADER. Signal arrow + Silkscreen eyebrow, a Jersey hook in uppercase with a full stop, a rule,
+Super Mo peeking over it.
 
-  ../.venv/bin/python tools/bake_profile.py    (needs fontTools)
+Motion is CSS inside the SVG (GitHub plays it in <img>) and stops for reduced motion; every still
+frame is complete.
 
-Reads fonts, tokens and Mo from ../the-thing-hq. Writes art/*.svg.
+  python tools/bake_profile.py            (needs fontTools; GITHUB_TOKEN or `gh` for the scoreboard)
+
+The scoreboard (heatmap + stats) is live data, rebuilt daily by .github/workflows/scoreboard.yml.
+If GitHub can't be reached, the last numbers in tools/stats-cache.json are used.
 """
+import datetime as dt
 import json
-import random
+import os
 import re
+import subprocess
+import urllib.request
 from pathlib import Path
 
 from fontTools.pens.svgPathPen import SVGPathPen
@@ -23,24 +34,33 @@ from fontTools.pens.transformPen import TransformPen
 from fontTools.ttLib import TTFont
 
 ROOT = Path(__file__).resolve().parent.parent
-HQ = ROOT.parent / "the-thing-hq"
-MOD = HQ / "herdr/mods/the-thing-hq"
+TOOLS = ROOT / "tools"
 OUT = ROOT / "art"
+USER = "Mustafa98m"
 
-TOK = {t["name"]: t["value"] for t in json.load(open(HQ / "assets/tokens.json"))["color"]["tokens"]
+TOK = {t["name"]: t["value"] for t in json.load(open(TOOLS / "tokens.json"))["color"]["tokens"]
        if isinstance(t["value"], str) and t["value"].startswith("#")}
 INK, COAL, INK2, ASH_D, ASH, BONE, SIGNAL = (TOK[k] for k in ("ink", "coal", "ink-2", "ash-dark", "ash", "bone", "signal"))
 
 FONTS = {
-    "arcade": MOD / "fonts/Jersey10-Regular.ttf",
-    "mono": MOD / "fonts/Silkscreen-Regular.ttf",
-    "monob": MOD / "fonts/Silkscreen-Bold.ttf",
-    "pixel": MOD / "fonts/PixelifySans-Variable.ttf",
-    "anton": MOD / "fonts/Anton-Regular.ttf",
+    "arcade": TOOLS / "fonts/Jersey10-Regular.ttf",
+    "mono": TOOLS / "fonts/Silkscreen-Regular.ttf",
+    "monob": TOOLS / "fonts/Silkscreen-Bold.ttf",
+    "pixel": TOOLS / "fonts/PixelifySans-Variable.ttf",
+    "anton": TOOLS / "fonts/Anton-Regular.ttf",
 }
+
+# the grid
+W, M = 1280, 64
+CELL = W / 3
+CW, GAP = 340, 66                      # three cards: 3 * 340 + 2 * 66 = 1152 = W - 2M
+COLS = [M + i * (CW + GAP) for i in range(3)]
+PAD = 28                               # top and bottom padding of every block
+
 _fonts = {}
 
 
+# ------------------------------------------------------------------ type and sprites
 def _font(face):
     if face not in _fonts:
         f = TTFont(FONTS[face])
@@ -62,7 +82,12 @@ def glyphs(s, face, size, x, y, tracking=0.0):
     return out, (cx - tracking * size if s else 0)
 
 
-def text(s, face, size, x, y, fill, tracking=0.0):
+def text(s, face, size, x, y, fill, tracking=0.0, anchor="start"):
+    w = glyphs(s, face, size, 0, 0, tracking)[1]
+    if anchor == "end":
+        x -= w
+    elif anchor == "middle":
+        x -= w / 2
     gl, w = glyphs(s, face, size, x, y, tracking)
     return f'<path fill="{fill}" d="{"".join(d for d, _ in gl)}"/>', w
 
@@ -71,9 +96,14 @@ def width(s, face, size, tracking=0.0):
     return glyphs(s, face, size, 0, 0, tracking)[1]
 
 
+def label(s, x, y, fill=ASH, size=14, anchor="start", bold=False):
+    """Silkscreen label: uppercase, .04em tracking (the site's one tracking)."""
+    return text(s, "monob" if bold else "mono", size, x, y, fill, .04, anchor)[0]
+
+
 def mo(pose, x, y, unit, cls=""):
     """Super Mo's real sprite (24 x 32 art px), top left at (x, y), `unit` px per art px."""
-    src = (MOD / f"art/cast/mo/{pose}.svg").read_text()
+    src = (TOOLS / f"mo/{pose}.svg").read_text()
     inner = re.search(r"<svg[^>]*>(.*)</svg>", src, re.S).group(1)
     c = f' class="{cls}"' if cls else ""
     return f'<g{c} transform="translate({x} {y}) scale({unit})" shape-rendering="crispEdges">{inner}</g>'
@@ -89,140 +119,123 @@ def bug(x, y, unit, body=BONE, eyes=INK):
             f'<path fill="{body}" d="{BUG}"/><path fill="{eyes}" d="{BUG_EYES}"/></g>')
 
 
-def bubble(s, x, y, tail="right"):
-    """A Quip: square Bone bubble, Ink outline, Pixelify text, stepped tail toward the speaker."""
-    size, pad, b = 26, 16, 4
-    w = width(s, "pixel", size) + pad * 2
-    h = size + pad * 2 - 2
-    t, _ = text(s, "pixel", size, x + pad, y + pad + size * 0.78, INK)
-    tx = x + w - 28 if tail == "right" else x + 16
-    steps = "".join(
-        f'<rect x="{tx + (i * 4 if tail == "right" else -i * 4)}" y="{y + h + i * 4}" width="{12 - i * 4}" height="4" fill="{BONE}"/>'
-        for i in range(3))
-    return (f'<rect x="{x - b}" y="{y - b}" width="{w + 2 * b}" height="{h + 2 * b}" fill="{INK}"/>'
-            f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="{BONE}"/>{steps}{t}'), w
+HEART = "M1 0h2v1H1ZM4 0h2v1H4ZM0 1h7v2H0ZM1 3h5v1H1ZM2 4h3v1H2ZM3 5h1v1H3Z"
 
 
-def ground(W, H, seed, dust=26, clear=None):
-    """Ink with a Coal haze, pixel dust, scanlines and a vignette (the HQ README's ground)."""
-    rnd = random.Random(seed)
-    pts = []
-    while len(pts) < dust:
-        x, y = rnd.randrange(8, W - 8) // 4 * 4, rnd.randrange(8, H - 8) // 4 * 4
-        if clear and any(a <= x <= c and b <= y <= d for a, b, c, d in clear):
-            continue
-        pts.append((x, y, rnd.choice((4, 4, 4, 8)), rnd.choice((ASH_D, ASH_D, ASH))))
-    d = "".join(f'<rect x="{x}" y="{y}" width="{s}" height="{s}" fill="{c}"/>' for x, y, s, c in pts)
-    return f"""<defs>
-  <pattern id="scan" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="1" fill="{INK}" opacity=".14"/></pattern>
-  <radialGradient id="haze" cx="50%" cy="40%" r="75%"><stop offset="0" stop-color="{COAL}"/><stop offset="1" stop-color="{INK}"/></radialGradient>
-  <radialGradient id="vig" cx="50%" cy="50%" r="72%"><stop offset=".6" stop-color="{INK}" stop-opacity="0"/><stop offset="1" stop-color="{INK}" stop-opacity=".7"/></radialGradient>
-</defs>
-<rect width="{W}" height="{H}" fill="url(#haze)"/>
-<g shape-rendering="crispEdges">{d}</g>"""
-
-
-def finish(W, H):
-    return (f'<rect width="{W}" height="{H}" fill="url(#scan)" pointer-events="none"/>'
-            f'<rect width="{W}" height="{H}" fill="url(#vig)" pointer-events="none"/>'
-            f'<rect x="1" y="1" width="{W - 2}" height="{H - 2}" fill="none" stroke="{ASH_D}" stroke-width="2"/>')
-
-
-def glow(cx, cy, r):
-    """The Signal glow behind Mo: three flat rings, no gradient."""
-    return "".join(f'<circle cx="{cx}" cy="{cy}" r="{r * k}" fill="{SIGNAL}" opacity="{o}"/>'
-                   for k, o in ((1, .06), (.74, .08), (.5, .11)))
+def rect(x, y, w, h, fill, stroke=None, sw=2):
+    s = f' stroke="{stroke}" stroke-width="{sw}"' if stroke else ""
+    return f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="{fill}"{s} shape-rendering="crispEdges"/>'
 
 
 def rule(x, y, w, fill=ASH_D, h=2):
-    return f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="{fill}" shape-rendering="crispEdges"/>'
+    return rect(x, y, w, h, fill)
 
 
-def svg(W, H, body, label, style=""):
+def card(x, y, w, h, on=False):
+    """The one card: Ink-2, a 2 px rule; Signal rule when it's the one in hand."""
+    return rect(x + 1, y + 1, w - 2, h - 2, INK2, SIGNAL if on else ASH_D, 2)
+
+
+def arrow_right(x, y, fill, u=3):
+    """A pixel → (7 x 5 art px), top left at (x, y)."""
+    return (f'<path fill="{fill}" shape-rendering="crispEdges" transform="translate({x} {y}) scale({u})" '
+            f'd="M0 2h5v1H0ZM3 0h1v1H3ZM4 1h1v1H4ZM5 2h1v1H5ZM4 3h1v1H4ZM3 4h1v1H3Z"/>')
+
+
+def arrow_down(x, y, fill, u=3):
+    return (f'<path fill="{fill}" shape-rendering="crispEdges" transform="translate({x} {y}) scale({u})" '
+            f'd="M2 0h1v5H2ZM0 3h1v1H0ZM1 4h1v1H1ZM3 4h1v1H3ZM4 3h1v1H4ZM2 5h1v1H2Z"/>')
+
+
+def wordmark(x, y, size, fill=BONE):
+    """MO—FAKHRII to the site's CSS: gap .16em, bar .42em x .11em in Signal, centred on the line."""
+    a, aw = text("MO", "anton", size, x, y, fill)
+    gap, bw, bh = size * .16, size * .42, size * .11
+    bar = rect(round(x + aw + gap, 2), round(y - size * .40 - bh / 2, 2), round(bw, 2), round(bh, 2), SIGNAL)
+    b, fw = text("FAKHRII", "anton", size, x + aw + gap * 2 + bw, y, fill)
+    return a + bar + b, aw + gap * 2 + bw + fw
+
+
+def svg(w, h, body, label_, style=""):
     st = f"<style>{style}@media (prefers-reduced-motion: reduce){{*{{animation:none!important}}}}</style>" if style else ""
-    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}" '
-            f'role="img" aria-label="{label}"><title>{label}</title>{st}{body}</svg>\n')
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{round(w)}" height="{h}" viewBox="0 0 {w:g} {h}" '
+            f'role="img" aria-label="{label_}"><title>{label_}</title>{st}'
+            f'<rect width="{w:g}" height="{h}" fill="{INK}"/>{body}</svg>\n')
 
 
-def wordmark(x, y, size):
-    """MO — FAKHRII in Anton, the dash in Signal."""
-    a, aw = text("MO", "anton", size, x, y, BONE, .02)
-    gap = size * .32
-    dash_w = size * .7
-    dash = f'<rect x="{x + aw + gap}" y="{y - size * .42}" width="{dash_w}" height="{max(3, size * .09)}" fill="{SIGNAL}"/>'
-    b, bw = text("FAKHRII", "anton", size, x + aw + gap * 2 + dash_w, y, BONE, .02)
-    return a + dash + b, aw + gap * 2 + dash_w + bw
+def cell_svg(i, h, draw, label_, style=""):
+    """Cell i of a row of three: the card is drawn at its grid column, shifted into the cell."""
+    off = COLS[i] - i * CELL
+    return svg(CELL, h, f'<g transform="translate({off:.3f} 0)">{draw}</g>', label_, style)
 
 
-# ------------------------------------------------------------------ the hero
+# ------------------------------------------------------------------ hero
 def hero():
-    W, H = 1280, 680
-    M = 64
-    b = [ground(W, H, 3, 36, [(0, 0, 760, H), (760, 380, W, H)])]
+    H = 640
+    b = []
+    # header bar, like the site's: the wordmark, then a ruled eyebrow row
+    wm, _ = wordmark(M, 74, 36)
+    b.append(wm)
+    b.append(label("MUSTAFA-OMAR.COM", W - M, 70, ASH, 14, "end"))
+    b.append(rule(M, 104, W - 2 * M))
+    b.append(rect(M, 125, 10, 10, SIGNAL))
+    b.append(label("SOLUTIONS ARCHITECT + DEVOPS ENGINEER", M + 22, 136, BONE, 14))
+    b.append(label("PLAYER 1 · MOSUL, IRAQ", W - M, 136, ASH, 14, "end"))
+    b.append(rule(M, 156, W - 2 * M))
 
-    # eyebrow
-    b.append(f'<rect x="{M}" y="{M + 6}" width="16" height="16" fill="{SIGNAL}"/>')
-    e, _ = text("PLAYER 1 · SOLUTIONS ARCHITECT + DEVOPS", "mono", 20, M + 30, M + 22, BONE, .04)
-    b.append(e)
-
-    # the hook, typed on a CRT: each letter steps in, the caret settles and blinks
+    # the hook, typed on a CRT, scanlines through the letters like the site's hero
     css = []
     i = 0
-    for line, y in (("MUSTAFA", M + 176), ("OMAR", M + 308)):
-        gl, w = glyphs(line, "arcade", 160, M - 6, y)
+    for line, y in (("MUSTAFA", 328), ("OMAR", 466)):
+        gl, w = glyphs(line, "arcade", 156, M - 6, y)
         for d, _ in gl:
             b.append(f'<path class="k" style="animation-delay:{0.5 + i * 0.12:.2f}s" fill="{BONE}" d="{d}"/>')
             i += 1
         last_w = w
-    stop, sw = glyphs(".", "arcade", 160, M - 6 + last_w + 2, M + 308)
+    stop, sw = glyphs(".", "arcade", 156, M - 6 + last_w + 2, 466)
     b.append(f'<path class="k" style="animation-delay:{0.5 + i * 0.12:.2f}s" fill="{SIGNAL}" d="{stop[0][0]}"/>')
     cx = M - 6 + last_w + 2 + sw + 14
-    b.append(f'<rect class="caret" x="{cx}" y="{M + 214}" width="30" height="94" fill="{SIGNAL}"/>')
-    css.append(".k{animation:type .1s steps(1) backwards}"
-               "@keyframes type{from{opacity:0}}"
+    b.append(f'<rect class="caret" x="{cx:.1f}" y="370" width="30" height="96" fill="{SIGNAL}"/>')
+    b.append(f'<defs><pattern id="scan" width="4" height="5" patternUnits="userSpaceOnUse">'
+             f'<rect width="4" height="1.5" fill="{INK}" opacity=".55"/></pattern></defs>'
+             f'<rect x="{M - 10}" y="200" width="680" height="280" fill="url(#scan)"/>')
+    css.append(".k{animation:type .1s steps(1) backwards}@keyframes type{from{opacity:0}}"
                f".caret{{animation:blink 1.1s steps(1) {0.5 + (i + 1) * 0.12:.2f}s infinite}}"
                "@keyframes blink{50%{opacity:0}}")
 
-    # the voice
-    v1, _ = text("I build real systems for work,", "pixel", 32, M, M + 378, BONE)
-    v2, _ = text("and strange little things for fun.", "pixel", 32, M, M + 420, ASH)
-    b += [v1, v2]
+    b.append(text("I build real systems for work,", "pixel", 28, M, 530, BONE)[0])
+    b.append(text("and strange little things for fun.", "pixel", 28, M, 568, ASH)[0])
 
-    # the wordmark and the proof
-    wm, _ = wordmark(M, H - 96, 40)
-    b.append(wm)
-    p, _ = text("THE-THING.DEV  ·  MUSTAFA-OMAR.COM", "mono", 16, M, H - 44, ASH, .04)
-    b.append(p)
-
-    # Bug Run, on auto-play: Mo walks, a bug crawls in, Mo hops it, forever
-    u = 7
-    floor = H - 128
-    mx, my = 900, floor - 32 * u
-    b.append(glow(mx + 12 * u, my + 18 * u, 200))
-    b.append(rule(800, floor, W - 800 - M + 10, ASH_D, 4))
-    # floor bits scroll left so the world moves under him
-    bits = "".join(rule(k * 48, 14, 16, ASH_D, 4) for k in range(12))
-    b.append(f'<svg x="800" y="{floor}" width="{W - 800 - M + 10}" height="30" overflow="hidden">'
-             f'<g class="ground">{bits}</g></svg>')
-    b.append(f'<g class="hop">'
-             f'<g class="f0">{mo("walk-0", mx, my, u)}</g><g class="f1">{mo("walk-1", mx, my, u)}</g></g>')
-    bu = 3
-    by = floor - 24 * bu
-    b.append(f'<svg x="800" y="{by - 10}" width="{W - 800 - M + 10}" height="{24 * bu + 10}" overflow="hidden">'
-             f'<g class="crawl">{bug(300, 10, bu)}</g></svg>')
+    # Bug Run on a little screen: Mo walks, a bug crawls in, Mo hops it
+    sx, sy, sw_, sh = 760, 196, 456, 372
+    b.append(card(sx, sy, sw_, sh))
+    b.append(rect(sx + 12, sy + 44, sw_ - 24, sh - 56, INK))
+    b.append(rect(sx + 14, sy + 20, 8, 8, SIGNAL))
+    b.append(label("BUG CAVE", sx + 30, sy + 30, BONE, 12))
+    for k in range(3):
+        b.append(f'<path fill="{SIGNAL}" transform="translate({sx + sw_ - 30 - k * 26} {sy + 16}) scale(3)" d="{HEART}" shape-rendering="crispEdges"/>')
+    iw, ih = sw_ - 24, sh - 56
+    fy = ih - 64
+    u = 4
+    mx, my = 96, fy - 32 * u
+    inner = [rect(0, fy, iw, 2, ASH_D)]
+    for r in range(3):  # bricks
+        for c in range(-1, iw // 40 + 1):
+            inner.append(rect(c * 40 + (20 if r % 2 else 0) + 2, fy + 6 + r * 18, 36, 14, INK2))
+    inner.append(f'<g class="hop"><g class="f0">{mo("walk-0", mx, my, u)}</g><g class="f1">{mo("walk-1", mx, my, u)}</g></g>')
+    bu = 2
+    inner.append(f'<g class="crawl">{bug(300, fy - 24 * bu, bu)}</g>')
+    b.append(f'<svg x="{sx + 12}" y="{sy + 44}" width="{iw}" height="{ih}" overflow="hidden">{"".join(inner)}</svg>')
+    travel = iw + 30 * bu
     css.append(
-        ".f0{animation:walk0 .5s steps(1) infinite}.f1{opacity:0;animation:walk1 .5s steps(1) infinite}"
-        "@keyframes walk0{50%{opacity:0}}@keyframes walk1{50%{opacity:1}}"
+        ".f0{animation:w0 .5s steps(1) infinite}.f1{opacity:0;animation:w1 .5s steps(1) infinite}"
+        "@keyframes w0{50%{opacity:0}}@keyframes w1{50%{opacity:1}}"
         ".crawl{animation:crawl 2.4s linear infinite}"
-        f"@keyframes crawl{{from{{transform:translateX({W - 800 - M + 10 - 300}px)}}to{{transform:translateX(-{300 + 30 * bu}px)}}}}"
+        f"@keyframes crawl{{from{{transform:translateX({iw - 300}px)}}to{{transform:translateX(-{300 + 30 * bu}px)}}}}"
         ".hop{animation:hop 2.4s steps(3) infinite}"
-        "@keyframes hop{0%,32%{transform:translateY(0)}42%{transform:translateY(-96px)}55%{transform:translateY(-112px)}68%{transform:translateY(-96px)}78%,100%{transform:translateY(0)}}"
-        ".ground{animation:scroll .4s linear infinite}@keyframes scroll{to{transform:translateX(-48px)}}")
-    tag, tw = text("SUPER MO · BUG RUN · AUTO-PLAY", "mono", 14, 0, 0, ASH, .04)
-    t2, _ = text("SUPER MO · BUG RUN · AUTO-PLAY", "mono", 14, W - M - tw, floor + 56, ASH, .04)
-    b.append(t2)
-
-    b.append(finish(W, H))
+        "@keyframes hop{0%,50%{transform:translateY(0)}58%{transform:translateY(-72px)}66%{transform:translateY(-84px)}"
+        "74%{transform:translateY(-72px)}82%,100%{transform:translateY(0)}}")
+    b.append(label("SUPER MO · BUG RUN · AUTO-PLAY", sx + sw_, sy + sh + 30, ASH, 12, "end"))
     return svg(W, H, "".join(b),
                "Mustafa Omar. Solutions architect and DevOps engineer. I build real systems for work, and strange little things for fun. Super Mo hops a bug.",
                "".join(css))
@@ -230,134 +243,137 @@ def hero():
 
 # ------------------------------------------------------------------ section headers
 SECTIONS = [
-    ("01", "now", "NOW PLAYING", "Systems at work.", "The Thing after hours.", "hardHat-0", "On it."),
-    ("02", "cartridges", "CARTRIDGES", "Things I made.", "Plug one in.", "point-0", "Pick one."),
-    ("03", "inventory", "INVENTORY", "The tools I reach for,", "slot by slot.", "giggle-0", "Ctrl+S."),
-    ("04", "link-cable", "LINK CABLE", "Say hi.", "I read everything.", "wave-1", "You rang?"),
+    ("01", "what-i-do", "BY DAY, AFTER HOURS", "WHAT I DO.", "peekUpNod-0", "MUSTAFA-OMAR.COM"),
+    ("02", "things-i-made", "CARTRIDGES", "THINGS I MADE.", "peekPoint-0", "THE-THING.DEV"),
+    ("03", "scoreboard", "LIVE FROM GITHUB", "THE SCOREBOARD.", "peekUpHappy-0", "UPDATED DAILY"),
+    ("04", "the-tools", "INVENTORY", "THE TOOLS.", "peekUp-0", "18 SLOTS"),
+    ("05", "say-hi", "LINK CABLE", "SAY HI.", "peekWave-0", "I READ EVERYTHING"),
 ]
 
 
-def header(n, label, v1, v2, pose, quip, seed):
-    W, H = 1280, 220
-    M = 64
-    b = [ground(W, H, seed, 14, [(0, 0, 940, H)])]
-    num, nw = text(n, "arcade", 116, M - 2, 124, SIGNAL)
-    b.append(num)
-    rx = M + nw + 22
-    b.append(rule(rx, 84, 72, ASH_D, 4))
-    lab, _ = text(label, "mono", 26, rx + 92, 98, BONE, .04)
-    b.append(lab)
-    a, aw = text(v1, "pixel", 30, M, 176, BONE)
-    c, _ = text(v2, "pixel", 30, M + aw + 10, 176, ASH)
-    b += [a, c]
-    u = 5
-    mx, my = W - M - 24 * u, H - 24 - 32 * u
-    b.append(rule(W - M - 260, H - 24, 260))
-    b.append(glow(mx + 12 * u, my + 18 * u, 88))
-    b.append(mo(pose, mx, my, u))
-    qw = width(quip, "pixel", 26) + 32
-    q, _ = bubble(quip, mx - qw + 36, my - 30)
-    b.append(q)
-    b.append(finish(W, H))
-    return svg(W, H, "".join(b), f"{n}: {label.title()}. {v1} {v2}")
+def header(n, eyebrow, hook, pose, aside):
+    H = 210
+    b = [arrow_down(M, 48, SIGNAL), label(f"{n} · {eyebrow}", M + 26, 64, ASH, 14)]
+    b.append(text(hook, "arcade", 92, M - 2, 152, BONE)[0])
+    ry = 176
+    u = 4
+    mx = W - M - 24 * u
+    b.append(mo(pose, mx, ry + 2 - 32 * u, u))
+    b.append(rule(M, ry, W - 2 * M))
+    b.append(label(aside, mx - 24, 152, SIGNAL, 13, "end"))
+    return svg(W, H, "".join(b), f"{n}. {eyebrow.title()}. {hook.title()}")
 
 
-# ------------------------------------------------------------------ cartridges
-def cartridge(title, sub, art, stamp, stamp_on, desc=()):
-    """A handheld cartridge: Ink-2 shell with grip ridges, a Bone label with the game's art and its blurb."""
-    W, H = 300, 420
-    b = [f'<rect width="{W}" height="{H}" fill="{INK}"/>']
-    # shell: square, with the notched top-right corner
-    b.append(f'<path fill="{INK2}" stroke="{ASH_D}" stroke-width="2" d="M14 14H262L286 38V406H14Z"/>')
-    for k in range(5):
-        b.append(rule(40 + k * 14, 26, 8, ASH_D, 14))
-    # label
+# ------------------------------------------------------------------ 01: the dialog box
+NOW = [
+    ("BY DAY", [("I'm a solutions architect and DevOps engineer.", BONE),
+                ("I build AI-powered solutions, agentic workflows,", ASH),
+                ("and the production infrastructure under them.", ASH)]),
+    ("AFTER HOURS", [("I make The Thing, my playground for films, games", BONE),
+                     ("and buttons you probably shouldn't press.", ASH),
+                     ("Super Mo lives there. He has opinions.", ASH)]),
+]
+
+
+def dialog():
+    H = PAD + 352 + PAD
+    b = [card(M, PAD, W - 2 * M, 352)]
+    px, py = M + 32, PAD + 52
+    b.append(label("MO", px, py - 14, SIGNAL, 13, bold=True))
+    b.append(rect(px, py, 152, 176, INK, ASH_D))
+    b.append(mo("nod-0", px + 16, py + 14, 5))
+    x = px + 152 + 48
+    cw = W - M - 40 - x
+    for c, (head, lines) in enumerate(NOW):
+        y = PAD + 50 + c * 160
+        b.append(label(head, x, y, SIGNAL, 13, bold=True))
+        b.append(rule(x, y + 12, cw))
+        for k, (line, col) in enumerate(lines):
+            b.append(text(line, "pixel", 23, x, y + 50 + k * 32, col)[0])
+    b.append(f'<path class="more" fill="{SIGNAL}" d="M{W - M - 40} {PAD + 318}h16v4h-4v4h-4v4h-4v-4h-4v-4h-4z"/>')
+    label_ = " ".join(l for _, ls in NOW for l, _ in ls)
+    return svg(W, H, "".join(b), label_, ".more{animation:more 1s steps(2) infinite}@keyframes more{50%{transform:translateY(4px)}}")
+
+
+# ------------------------------------------------------------------ 02: cartridges
+def cartridge(i, title, sub, art, stamp, stamp_on, desc, empty=False):
+    """A handheld cartridge, CW wide: Ink-2 shell with grip ridges, a Bone label, art, blurb and stamp."""
+    k = CW / 300
+    s = []
+    dash = ' stroke-dasharray="8 6"' if empty else ""
+    s.append(f'<path fill="{INK if empty else INK2}" stroke="{ASH_D}" stroke-width="2"{dash} d="M14 14H262L286 38V406H14Z"/>')
+    for r in range(5):
+        s.append(rule(40 + r * 14, 26, 8, ASH_D, 14))
     lx, ly, lw, lh = 34, 58, 232, 296
-    b.append(f'<rect x="{lx}" y="{ly}" width="{lw}" height="{lh}" fill="{BONE}"/>')
-    b.append(f'<rect x="{lx + 10}" y="{ly + 10}" width="{lw - 20}" height="140" fill="{INK}"/>')
-    b.append(f'<g transform="translate({lx + 10} {ly + 10})">{art}</g>')
-    ts = 34
-    while width(title, "arcade", ts) > lw - 24:
-        ts -= 2
-    t, _ = text(title, "arcade", ts, lx + 12, ly + 186, INK)
-    s, _ = text(sub, "mono", 11, lx + 12, ly + 214, ASH_D, .04)
-    b += [t, s]
-    for k, line in enumerate(desc):
+    if empty:
+        s.append(f'<rect x="{lx}" y="{ly}" width="{lw}" height="{lh}" fill="none" stroke="{ASH_D}" stroke-width="2" stroke-dasharray="6 6"/>')
+        s.append(text("EMPTY", "arcade", 44, lx + lw / 2, ly + 140, ASH_D, anchor="middle")[0])
+        s.append(text("SLOT 06", "mono", 12, lx + lw / 2, ly + 168, ASH_D, .04, "middle")[0])
+    else:
+        s.append(rect(lx, ly, lw, lh, BONE))
+        s.append(rect(lx + 10, ly + 10, lw - 20, 140, INK))
+        s.append(f'<g transform="translate({lx + 10} {ly + 10})">{art}</g>')
+        ts = 34
+        while width(title, "arcade", ts) > lw - 24:
+            ts -= 2
+        s.append(text(title, "arcade", ts, lx + 12, ly + 186, INK)[0])
+        s.append(text(sub, "mono", 11, lx + 12, ly + 214, ASH_D, .04)[0])
+    for j, line in enumerate(desc):
         fs = 15
         while width(line, "pixel", fs) > lw - 24:
             fs -= .5
-        dl, _ = text(line, "pixel", fs, lx + 12, ly + 244 + k * 20, INK)
-        b.append(dl)
-    # stamp, tilted like Bug Cave's SQUASHED
-    sw = width(stamp, "monob", 14, .06) + 20
-    st, _ = text(stamp, "monob", 14, 10, 21, INK if stamp_on else BONE, .06)
-    fill = SIGNAL if stamp_on else ASH_D
-    b.append(f'<g transform="translate({lx + lw - sw + 8} {ly - 14}) rotate(-6)"><rect width="{sw}" height="30" fill="{fill}"/>{st}</g>')
-    # contacts
-    for k in range(9):
-        b.append(rule(64 + k * 20, 378, 10, ASH_D, 16))
-    return svg(W, H, "".join(b), f"Cartridge: {title}. {sub.title()}. {' '.join(desc)} {stamp.title()}.")
+        s.append(text(line, "pixel", fs, lx + 12, ly + 244 + j * 20, ASH if empty else INK)[0])
+    if stamp:
+        sw = width(stamp, "monob", 14, .06) + 20
+        st, _ = text(stamp, "monob", 14, 10, 21, INK if stamp_on else BONE, .06)
+        s.append(f'<g transform="translate({lx + lw - sw + 8} {ly - 14}) rotate(-6)">{rect(0, 0, sw, 30, SIGNAL if stamp_on else ASH_D)}{st}</g>')
+    for j in range(9):
+        s.append(rule(64 + j * 20, 378, 10, ASH_D, 16))
+    h = round(420 * k)
+    body = f'<g transform="translate(0 {PAD - 10}) scale({k:.4f})">{"".join(s)}</g>'
+    return cell_svg(i, h + 2 * PAD - 20, body, f"Cartridge: {title}. {' '.join(desc)} {stamp.title() if stamp else ''}".strip())
 
 
 def art_thing():
-    """THE THING. on a little CRT, with its caret."""
-    a, aw = text("THE", "arcade", 58, 18, 66, BONE)
+    a, _ = text("THE", "arcade", 58, 18, 66, BONE)
     c, cw = text("THING", "arcade", 58, 18, 120, BONE)
     d, dw = text(".", "arcade", 58, 18 + cw + 2, 120, SIGNAL)
     scan = "".join(f'<rect x="0" y="{y}" width="212" height="1" fill="{INK}" opacity=".35"/>' for y in range(0, 140, 4))
-    return a + c + d + f'<rect x="{18 + cw + dw + 10}" y="86" width="12" height="34" fill="{SIGNAL}"/>' + scan
+    return a + c + d + rect(18 + cw + dw + 10, 86, 12, 34, SIGNAL) + scan
 
 
 def art_bugrun():
-    return (rule(0, 118, 212, ASH_D, 3)
-            + glow(64, 70, 50)
-            + mo("cheer-0", 30, 22, 3)
-            + bug(140, 118 - 48, 2)
-            + "".join(f'<rect x="{x}" y="{y}" width="4" height="4" fill="{SIGNAL}"/>'
-                      for x, y in ((118, 34), (126, 26), (176, 30), (184, 46))))
+    return (rule(0, 118, 212, ASH_D, 3) + mo("cheer-0", 30, 22, 3) + bug(140, 70, 2)
+            + "".join(rect(x, y, 4, 4, SIGNAL) for x, y in ((118, 34), (126, 26), (176, 30), (184, 46))))
 
 
 def art_block():
-    """Display: Block: falling one-letter HTML tags."""
     cell = 20
-    pieces = [  # (tag, cells, colour)
-        ("b", [(1, 4), (2, 4), (3, 4), (2, 3)], BONE),
-        ("i", [(4, 5), (5, 5), (6, 5), (7, 5)], ASH),
-        ("p", [(0, 5), (1, 5), (0, 6), (1, 6)], SIGNAL),
-        ("a", [(2, 5), (3, 5), (3, 6), (4, 6)], ASH),
-        ("u", [(5, 6), (6, 6), (7, 6), (8, 6)], BONE),
-        ("s", [(5, 0), (6, 0), (6, 1), (7, 1)], SIGNAL),
-    ]
+    pieces = [("b", [(1, 4), (2, 4), (3, 4), (2, 3)], BONE), ("i", [(4, 5), (5, 5), (6, 5), (7, 5)], ASH),
+              ("p", [(0, 5), (1, 5), (0, 6), (1, 6)], SIGNAL), ("a", [(2, 5), (3, 5), (3, 6), (4, 6)], ASH),
+              ("u", [(5, 6), (6, 6), (7, 6), (8, 6)], BONE), ("s", [(5, 0), (6, 0), (6, 1), (7, 1)], SIGNAL)]
     out = []
     for tag, cells, col in pieces:
         for (cx, cy) in cells:
-            out.append(f'<rect x="{6 + cx * cell}" y="{cy * cell}" width="{cell - 2}" height="{cell - 2}" fill="{col}"/>')
+            out.append(rect(6 + cx * cell, cy * cell, cell - 2, cell - 2, col))
         cx, cy = cells[0]
-        t, tw = text(f"<{tag}>", "mono", 8, 0, 0, INK)
-        t, _ = text(f"<{tag}>", "mono", 8, 6 + cx * cell + (cell - 2 - tw) / 2, cy * cell + 12, INK)
-        out.append(t)
-    return f'<g shape-rendering="crispEdges">{"".join(out)}</g>'
+        out.append(text(f"<{tag}>", "mono", 8, 6 + cx * cell + (cell - 2) / 2, cy * cell + 12, INK, anchor="middle")[0])
+    return "".join(out)
 
 
 def art_hq():
-    # a pixel desk floor with Mo in his hard hat
-    floor = "".join(f'<rect x="{x}" y="{112 + (x // 16) % 2 * 0}" width="14" height="4" fill="{ASH_D}"/>' for x in range(0, 212, 16))
-    screens = "".join(f'<rect x="{x}" y="34" width="34" height="24" fill="{INK2}" stroke="{ASH_D}"/>'
-                      f'<rect x="{x + 5}" y="{40}" width="{12 + (x % 3) * 4}" height="3" fill="{SIGNAL if x == 128 else ASH}"/>'
-                      f'<rect x="{x + 5}" y="{47}" width="18" height="3" fill="{ASH_D}"/>' for x in (128, 168))
-    return floor + screens + glow(56, 74, 46) + mo("hardHat-0", 22, 18, 3)
+    floor = "".join(rect(x, 112, 14, 4, ASH_D) for x in range(0, 212, 16))
+    screens = "".join(rect(x, 34, 34, 24, INK2, ASH_D, 1) + rect(x + 5, 40, 12 + (x % 3) * 4, 3, SIGNAL if x == 128 else ASH)
+                      + rect(x + 5, 47, 18, 3, ASH_D) for x in (128, 168))
+    return floor + screens + mo("hardHat-0", 22, 18, 3)
 
 
 def art_portfolio():
-    """A little browser window holding the wordmark."""
-    bar = (f'<rect x="0" y="0" width="212" height="18" fill="{INK2}"/>'
-           + "".join(f'<rect x="{8 + i * 10}" y="7" width="5" height="5" fill="{c}"/>' for i, c in enumerate((SIGNAL, ASH, ASH_D)))
+    bar = (rect(0, 0, 212, 18, INK2) + "".join(rect(8 + i * 10, 7, 5, 5, c) for i, c in enumerate((SIGNAL, ASH, ASH_D)))
            + text("MUSTAFA-OMAR.COM", "mono", 8, 46, 13, ASH, .04)[0])
-    wm, ww = wordmark(0, 0, 30)
-    wm, _ = wordmark((212 - ww) / 2, 78, 30)
-    s1, w1 = text("ARCHITECT · DEVOPS", "mono", 9, 0, 0, ASH, .04)
-    s1, _ = text("ARCHITECT · DEVOPS", "mono", 9, (212 - w1) / 2, 104, ASH, .04)
-    return bar + wm + s1
+    _, ww = wordmark(0, 0, 30)
+    wm, _ = wordmark((212 - ww) / 2, 82, 30)
+    return bar + wm + text("ARCHITECT · DEVOPS", "mono", 9, 106, 106, ASH, .04, "middle")[0]
 
 
 CARTS = [
@@ -374,7 +390,173 @@ CARTS = [
 ]
 
 
-# ------------------------------------------------------------------ inventory (a Chaos Mode hotbar)
+# ------------------------------------------------------------------ 03: the scoreboard (live)
+def _token():
+    if os.environ.get("GITHUB_TOKEN"):
+        return os.environ["GITHUB_TOKEN"]
+    try:
+        return subprocess.run(["gh", "auth", "token"], capture_output=True, text=True, check=True).stdout.strip()
+    except Exception:
+        return None
+
+
+def fetch_stats():
+    cache = TOOLS / "stats-cache.json"
+    try:
+        q = ('query($u:String!){user(login:$u){repositories(ownerAffiliations:OWNER,privacy:PUBLIC){totalCount}'
+             'followers{totalCount}contributionsCollection{contributionCalendar{totalContributions '
+             'weeks{contributionDays{date contributionCount}}}}}}')
+        req = urllib.request.Request("https://api.github.com/graphql",
+                                     data=json.dumps({"query": q, "variables": {"u": USER}}).encode(),
+                                     headers={"Authorization": f"bearer {_token()}", "User-Agent": "profile-bake"})
+        u = json.load(urllib.request.urlopen(req, timeout=30))["data"]["user"]
+        cal = u["contributionsCollection"]["contributionCalendar"]
+        weeks = [[(d["date"], d["contributionCount"]) for d in w["contributionDays"]] for w in cal["weeks"]]
+        visitors = None
+        try:
+            badge = urllib.request.urlopen(urllib.request.Request(
+                f"https://komarev.com/ghpvc/?username={USER}", headers={"User-Agent": "profile-bake"}), timeout=20).read().decode()
+            nums = re.findall(r">([\d,]+)<", badge)
+            visitors = int(nums[-1].replace(",", "")) if nums else None
+        except Exception:
+            pass
+        old = json.loads(cache.read_text()) if cache.exists() else {}
+        data = {"updated": dt.date.today().isoformat(), "total": cal["totalContributions"], "weeks": weeks,
+                "repos": u["repositories"]["totalCount"], "followers": u["followers"]["totalCount"],
+                "visitors": visitors if visitors is not None else old.get("visitors")}
+        cache.write_text(json.dumps(data))
+        return data
+    except Exception as e:
+        print("scoreboard: using cache:", e)
+        return json.loads(cache.read_text())
+
+
+def streaks(weeks):
+    days = [c for w in weeks for _, c in w]
+    best = run = 0
+    for c in days:
+        run = run + 1 if c else 0
+        best = max(best, run)
+    cur = 0
+    tail = days[:-1] if days and days[-1] == 0 else days  # today may not have started yet
+    for c in reversed(tail):
+        if not c:
+            break
+        cur += 1
+    return cur, best, max(days or [0]), sum(1 for c in days if c)
+
+
+def level_colors():
+    def mix(a, b, t):
+        a, b = int(a[1:], 16), int(b[1:], 16)
+        ch = [round(((a >> s) & 255) * (1 - t) + ((b >> s) & 255) * t) for s in (16, 8, 0)]
+        return "#" + "".join(f"{c:02x}" for c in ch)
+    return [INK, ASH_D, mix(INK2, SIGNAL, .4), mix(INK2, SIGNAL, .7), SIGNAL]
+
+
+def level(c, top):
+    if c == 0:
+        return 0
+    q = c / max(top, 1)
+    return 1 if q <= .1 else 2 if q <= .3 else 3 if q <= .6 else 4
+
+
+def heatmap(data):
+    """The contribution grid; Super Mo runs above it and each week powers on as he passes."""
+    weeks = data["weeks"]
+    nweek = len(weeks)
+    CH = 372
+    H = PAD + CH + PAD
+    cx0, cy0, cw_ = M, PAD, W - 2 * M
+    b = [card(cx0, cy0, cw_, CH)]
+    upd = dt.date.fromisoformat(data["updated"]).strftime("%d %b %Y").upper()
+    b.append(rect(cx0 + 24, cy0 + 27, 10, 10, SIGNAL))
+    b.append(label("CONTRIBUTIONS · LAST 12 MONTHS", cx0 + 44, cy0 + 38, BONE, 13))
+    b.append(label(f"UPDATED {upd}", cx0 + cw_ - 24, cy0 + 38, ASH, 13, "end"))
+    gx = cx0 + 24
+    gw = cw_ - 48
+    pitch = gw / nweek
+    cs = pitch - 4
+    floor = cy0 + 138
+    gy = floor + 34
+    b.append(rule(gx, floor, gw))
+    cols = level_colors()
+    top = max((c for w in weeks for _, c in w), default=1)
+    # month labels
+    last = None
+    for wi, w in enumerate(weeks):
+        mth = dt.date.fromisoformat(w[0][0]).strftime("%b").upper()
+        if mth != last and wi < nweek - 2:
+            b.append(label(mth, gx + wi * pitch, floor + 22, ASH, 10))
+            last = mth
+    # cells (Sunday first, like GitHub)
+    for wi, w in enumerate(weeks):
+        for d, c in w:
+            wd = (dt.date.fromisoformat(d).weekday() + 1) % 7
+            b.append(rect(round(gx + wi * pitch, 2), round(gy + wd * pitch, 2), round(cs, 2), round(cs, 2), cols[level(c, top)]))
+    # Super Mo's run: per week, a dim cover that lifts when he passes, and a spark if that week had work
+    T = 16
+    u = 2
+    mw = 24 * u
+    x_end = gx + gw - mw
+    x_start = gx - 4
+    run = .82
+    css = [".f0{animation:w0 .4s steps(1) infinite}.f1{opacity:0;animation:w1 .4s steps(1) infinite}"
+           "@keyframes w0{50%{opacity:0}}@keyframes w1{50%{opacity:1}}",
+           f".run{{animation:run {T}s linear infinite}}"
+           f"@keyframes run{{0%{{transform:translateX({x_start - x_end:.1f}px)}}{run * 100:.1f}%,100%{{transform:translateX(0)}}}}"]
+    covers = []
+    for wi, w in enumerate(weeks):
+        xc = gx + wi * pitch + cs / 2
+        f = run * (xc - (x_start + mw / 2)) / (x_end - x_start)
+        f = min(max(f, 0), run) * 100
+        covers.append(f'<rect class="c{wi}" x="{gx + wi * pitch - 1:.2f}" y="{gy - 1}" width="{pitch:.2f}" height="{7 * pitch:.2f}" fill="{INK2}" opacity="0"/>')
+        css.append(f".c{wi}{{animation:c{wi} {T}s linear infinite}}"
+                   f"@keyframes c{wi}{{0%,{f:.2f}%{{opacity:.9}}{f + .3:.2f}%,97%{{opacity:0}}100%{{opacity:.9}}}}")
+        if sum(c for _, c in w):
+            covers.append(f'<g class="s{wi}" opacity="0">{rect(round(xc - 2), floor - 14, 4, 4, SIGNAL)}'
+                          f'{rect(round(xc - 8), floor - 22, 4, 4, SIGNAL)}{rect(round(xc + 4), floor - 24, 4, 4, SIGNAL)}</g>')
+            css.append(f".s{wi}{{animation:s{wi} {T}s steps(1) infinite}}"
+                       f"@keyframes s{wi}{{0%,{f:.2f}%{{opacity:0}}{f + .1:.2f}%{{opacity:1}}{f + 1.6:.2f}%,100%{{opacity:0}}}}")
+    b += covers
+    my = floor - 32 * u
+    b.append(f'<g class="run"><g class="f0">{mo("walk-0", x_end, my, u)}</g><g class="f1">{mo("walk-1", x_end, my, u)}</g></g>')
+    # legend + caption
+    ly = gy + 7 * pitch + 28
+    b.append(label("SUPER MO POWERS ON EACH WEEK AS HE RUNS BY", gx, ly + 10, ASH, 11))
+    lx = gx + gw - 5 * 16 - width("MORE", "mono", 11, .04) - 10
+    b.append(label("LESS", lx - 10, ly + 10, ASH, 11, "end"))
+    for k, c in enumerate(cols):
+        b.append(rect(lx + k * 16, ly, 12, 12, c, ASH_D if k == 0 else None, 1))
+    b.append(label("MORE", lx + 5 * 16 + 6, ly + 10, ASH, 11))
+    return svg(W, H, "".join(b), f"{data['total']:,} contributions in the last 12 months, as a heatmap. Super Mo runs across it.", "".join(css))
+
+
+def stats(data):
+    cur, best, busiest, active = streaks(data["weeks"])
+    tiles = [
+        ("CONTRIBUTIONS", f"{data['total']:,}", "LAST 12 MONTHS"),
+        ("CURRENT STREAK", f"{cur:02d}", "DAYS IN A ROW"),
+        ("LONGEST STREAK", f"{best:02d}", "DAYS IN A ROW"),
+        ("ACTIVE DAYS", f"{active:,}", "OF THE LAST 365"),
+        ("BUSIEST DAY", f"{busiest:,}", "CONTRIBUTIONS"),
+        ("PROFILE VISITORS", f"{data['visitors']:,}" if data.get("visitors") else "--", "SINCE THE COUNTER STARTED"),
+    ]
+    th, tg = 132, 22
+    H = PAD + 2 * th + tg + PAD
+    b = []
+    for k, (lab, num, unit) in enumerate(tiles):
+        x, y = COLS[k % 3], PAD + (k // 3) * (th + tg)
+        b.append(card(x, y, CW, th, on=k == 0))
+        b.append(rect(x + 20, y + 21, 8, 8, SIGNAL))
+        b.append(label(lab, x + 36, y + 30, BONE, 12))
+        b.append(text(num, "arcade", 72, x + 18, y + 98, SIGNAL if k == 0 else BONE)[0])
+        b.append(label(unit, x + 20, y + 118, ASH, 10))
+    lbl = ". ".join(f"{l.title()}: {n} {u.lower()}" for l, n, u in tiles)
+    return svg(W, H, "".join(b), lbl)
+
+
+# ------------------------------------------------------------------ 04: inventory (a Chaos Mode hotbar)
 INVENTORY = [
     ("WEB", ["REACT", "NEXT.JS", "TYPESCRIPT", "JAVASCRIPT", "THREE.JS", "WORDPRESS"]),
     ("OPS", ["DOCKER", "LINUX", "GIT", "ACTIONS", "CLOUDFLARE", "NGINX"]),
@@ -383,146 +565,91 @@ INVENTORY = [
 
 
 def inventory():
-    W = 1280
-    M = 64
-    sw, sh, gap = 182, 84, 12
-    row_h = sh + 34
-    H = 70 + row_h * len(INVENTORY) + 28
-    b = [ground(W, H, 77, 0)]
+    sw, sh, gap = (W - 2 * M - 5 * 12) / 6, 84, 12
+    row_h = sh + 40
+    H = PAD + row_h * len(INVENTORY) - 14 + PAD
+    b = []
     key = 1
     for r, (name, items) in enumerate(INVENTORY):
-        y = 54 + r * row_h
-        lab, _ = text(name, "monob", 14, M, y - 10, ASH, .06)
-        b.append(lab)
-        b.append(rule(M + width(name, "monob", 14, .06) + 12, y - 16, W - 2 * M - width(name, "monob", 14, .06) - 12))
+        y = PAD + 26 + r * row_h
+        b.append(label(name, M, y - 12, ASH, 12, bold=True))
+        lw_ = width(name, "monob", 12, .04) + 12
+        b.append(rule(M + lw_, y - 18, W - 2 * M - lw_))
         for c, item in enumerate(items):
             x = M + c * (sw + gap)
             on = r == 0 and c == 0
-            b.append(f'<rect x="{x}" y="{y}" width="{sw}" height="{sh}" fill="{INK2}" stroke="{SIGNAL if on else ASH_D}" stroke-width="{4 if on else 2}"/>')
-            k, _ = text(f"{key:02d}", "mono", 12, x + 10, y + 20, SIGNAL if on else ASH, .04)
-            fs = 20
+            b.append(card(round(x, 2), y, round(sw, 2), sh, on))
+            b.append(label(f"{key:02d}", x + 12, y + 22, SIGNAL if on else ASH, 11))
+            fs = 18
             while width(item, "mono", fs, .04) > sw - 24:
                 fs -= 1
-            iw = width(item, "mono", fs, .04)
-            t, _ = text(item, "mono", fs, x + (sw - iw) / 2, y + sh / 2 + fs * .42 + 6, BONE, .04)
-            b += [k, t]
+            b.append(label(item, x + sw / 2, y + sh / 2 + fs * .42 + 6, BONE, fs, "middle"))
             key += 1
-    hint, hw = text("01 IN HAND · 18 SLOTS", "mono", 12, 0, 0, ASH, .04)
-    hint, _ = text("01 IN HAND · 18 SLOTS", "mono", 12, W - M - hw, H - 22, ASH, .04)
-    b.append(hint)
-    b.append(finish(W, H))
-    label = "Inventory. " + ". ".join(f"{n}: " + ", ".join(i.title() for i in items) for n, items in INVENTORY) + "."
-    return svg(W, H, "".join(b), label)
+    lbl = "Inventory. " + ". ".join(f"{n}: " + ", ".join(i.title() for i in items) for n, items in INVENTORY) + "."
+    return svg(W, H, "".join(b), lbl)
 
 
-# ------------------------------------------------------------------ the "now" dialog box
-NOW = [
-    ("BY DAY", [("I'm a solutions architect and DevOps engineer.", BONE),
-                ("I build AI-powered solutions, agentic workflows,", ASH),
-                ("and the production infrastructure under them.", ASH)]),
-    ("AFTER HOURS", [("I make The Thing, my playground for films, games", BONE),
-                     ("and buttons you probably shouldn't press.", ASH),
-                     ("Super Mo lives there. He has opinions.", ASH)]),
-]
-
-
-def dialog():
-    """An RPG text box: Mo's portrait in a frame, two speeches, a Signal arrow to read on."""
-    W, M = 1280, 64
-    H = 430
-    b = [ground(W, H, 41, 0)]
-    b.append(f'<rect x="{M - 6}" y="26" width="{W - 2 * M + 12}" height="{H - 52}" fill="{INK}" stroke="{ASH_D}" stroke-width="2"/>')
-    b.append(f'<rect x="{M}" y="32" width="{W - 2 * M}" height="{H - 64}" fill="{INK2}" stroke="{BONE}" stroke-width="4"/>')
-    # portrait
-    px, py = M + 28, 70
-    b.append(f'<rect x="{px}" y="{py}" width="148" height="180" fill="{INK}" stroke="{ASH_D}" stroke-width="2"/>')
-    b.append(glow(px + 74, py + 96, 70))
-    b.append(mo("nod-0", px + 14, py + 12, 5))
-    n, nw = text("MO", "monob", 14, 0, 0, INK, .06)
-    b.append(f'<rect x="{px}" y="{py + 180}" width="148" height="0" fill="none"/>')
-    tag, _ = text("MO", "monob", 14, px + 10, py - 8, SIGNAL, .06)
-    b.append(tag)
-    # speeches
-    x = px + 148 + 48
-    colw = W - M - 40 - x
-    for c, (head, lines) in enumerate(NOW):
-        y = 82 + c * 170
-        h, _ = text(head, "monob", 14, x, y, SIGNAL, .06)
-        b.append(h)
-        b.append(rule(x, y + 10, colw))
-        for k, (line, col) in enumerate(lines):
-            t, _ = text(line, "pixel", 24, x, y + 50 + k * 34, col)
-            b.append(t)
-    b.append(f'<path class="more" fill="{SIGNAL}" d="M{W - M - 36} {H - 58}h16v4h-4v4h-4v4h-4v-4h-4v-4h-4z"/>')
-    b.append(finish(W, H))
-    label = " ".join(l for _, ls in NOW for l, _ in ls)
-    return svg(W, H, "".join(b), label,
-               ".more{animation:more 1s steps(2) infinite}@keyframes more{50%{transform:translateY(4px)}}")
-
-
-# ------------------------------------------------------------------ link buttons
+# ------------------------------------------------------------------ 05: link buttons
 BUTTONS = [
     ("portfolio", "PORTFOLIO", "MUSTAFA-OMAR.COM", True),
     ("the-thing", "PLAY", "THE-THING.DEV", True),
     ("linkedin", "LINKEDIN", "MOFAKHRI", False),
     ("email", "EMAIL", "SAY HI", False),
-    ("instagram", "INSTAGRAM", "MO_FAKHRI98", False),
+    ("instagram", "INSTAGRAM", "MO_FAKHRII", False),
+    ("repos", "GITHUB", "ALL REPOS", False),
 ]
 
 
-def button(label, value, primary):
-    """A square console button: a Silkscreen label over the value, Signal when it's the main way in."""
-    W, H = 300, 88
-    face = SIGNAL if primary else INK2
+def button(i, lab, value, primary):
+    """A square button, CW wide: Signal with Ink type when it's a main way in, else the card."""
+    bh = 96
+    H = 12 + bh + 12
     fg = INK if primary else BONE
     sub = INK if primary else ASH
-    b = [f'<rect width="{W}" height="{H}" fill="{INK}"/>',
-         f'<rect x="4" y="8" width="{W - 8}" height="{H - 12}" fill="{ASH_D if not primary else "#b8360f"}"/>',
-         f'<rect x="4" y="4" width="{W - 8}" height="{H - 16}" fill="{face}" stroke="{BONE if not primary else face}" stroke-width="2"/>']
-    l, _ = text(label, "monob", 12, 22, 28, sub, .08)
+    s = [rect(0, 12, CW, bh, SIGNAL) if primary else card(0, 12, CW, bh)]
+    s.append(label(lab, 22, 44, sub, 12, bold=True))
     fs = 22
-    while width(value, "mono", fs, .04) > W - 70:
+    while width(value, "mono", fs, .04) > CW - 80:
         fs -= 1
-    v, _ = text(value, "mono", fs, 22, 60, fg, .04)
-    arrow = f'<path fill="{fg}" d="M{W - 40} 30h4v4h4v4h4v4h-4v4h-4v4h-4z"/>'
-    b += [l, v, arrow]
-    return svg(W, H, "".join(b), f"{label.title()}: {value.lower()}")
+    s.append(label(value, 22, 82, fg, fs))
+    s.append(arrow_right(CW - 46, 52, fg, 4))
+    return cell_svg(i, H, "".join(s), f"{lab.title()}: {value.lower()}")
 
 
 # ------------------------------------------------------------------ footer
 def footer():
-    W, H = 1280, 260
-    M = 64
-    b = [ground(W, H, 99, 22, [(0, 0, 820, H)])]
-    t, tw = text("GAME SAVED", "arcade", 96, M, 112, BONE)
-    d, _ = text(".", "arcade", 96, M + tw + 2, 112, SIGNAL)
-    v1, _ = text("Thanks for stopping by.", "pixel", 30, M, 162, BONE)
-    v2, _ = text("Come back when there's more.", "pixel", 30, M, 198, ASH)
-    b += [t, d, v1, v2]
-    u = 6
-    mx, my = W - M - 24 * u, H - 28 - 32 * u
-    b.append(rule(W - M - 300, H - 28, 300))
-    b.append(glow(mx + 12 * u, my + 18 * u, 104))
+    H = 290
+    b = [rule(M, 30, W - 2 * M)]
+    t, tw = text("GAME SAVED", "arcade", 92, M - 2, 128, BONE)
+    b += [t, text(".", "arcade", 92, M + tw, 128, SIGNAL)[0]]
+    b.append(text("Thanks for stopping by.", "pixel", 26, M, 172, BONE)[0])
+    b.append(text("Come back when there's more.", "pixel", 26, M, 206, ASH)[0])
+    u = 5
+    mx, my = W - M - 24 * u, 236 - 32 * u
     b.append(mo("sleepy-0", mx, my, u))
-    qw = width("Five more min.", "pixel", 26) + 32
-    q, _ = bubble("Five more min.", mx - qw + 40, my - 30)
-    b.append(q)
-    wm, _ = wordmark(M, H - 22, 18)
+    b.append(label("MUSTAFA-OMAR.COM · THE-THING.DEV", W - M, 266, ASH, 12, "end"))
+    b.append(rule(M, 236, W - 2 * M))
+    wm, _ = wordmark(M, 268, 18)
     b.append(wm)
-    b.append(finish(W, H))
     return svg(W, H, "".join(b), "Game saved. Thanks for stopping by. Come back when there's more.")
 
 
 if __name__ == "__main__":
     OUT.mkdir(parents=True, exist_ok=True)
+    for old in OUT.glob("*.svg"):
+        old.unlink()
     (OUT / "hero.svg").write_text(hero())
-    for i, (n, slug, label, v1, v2, pose, quip) in enumerate(SECTIONS):
-        (OUT / f"{n}-{slug}.svg").write_text(header(n, label, v1, v2, pose, quip, 10 + i))
-    for slug, title, sub, art, stamp, on, desc in CARTS:
-        (OUT / f"cart-{slug}.svg").write_text(cartridge(title, sub, art(), stamp, on, desc))
+    for n, slug, eyebrow, hook, pose, aside in SECTIONS:
+        (OUT / f"h{n}-{slug}.svg").write_text(header(n, eyebrow, hook, pose, aside))
     (OUT / "now.svg").write_text(dialog())
-    for slug, lab, val, primary in BUTTONS:
-        (OUT / f"btn-{slug}.svg").write_text(button(lab, val, primary))
+    for i, (slug, title, sub, art, stamp, on, desc) in enumerate(CARTS):
+        (OUT / f"cart-{i + 1}-{slug}.svg").write_text(cartridge(i % 3, title, sub, art(), stamp, on, desc))
+    (OUT / "cart-6-empty.svg").write_text(cartridge(2, "EMPTY SLOT", "", "", "", False, ("Saving this one for", "the next thing."), empty=True))
+    data = fetch_stats()
+    (OUT / "heatmap.svg").write_text(heatmap(data))
+    (OUT / "stats.svg").write_text(stats(data))
     (OUT / "inventory.svg").write_text(inventory())
+    for i, (slug, lab, val, primary) in enumerate(BUTTONS):
+        (OUT / f"btn-{i + 1}-{slug}.svg").write_text(button(i % 3, lab, val, primary))
     (OUT / "footer.svg").write_text(footer())
-    print("art:", sorted(p.name for p in OUT.glob("*.svg")))
+    print("art:", len(list(OUT.glob("*.svg"))), "files")
